@@ -1,0 +1,257 @@
+
+WhatsApp
+Flipboard
+With the rise of cheap VPS (Virtual Private Server) services and the increase of complexity in the architecture of new web applications, deployment processes are becoming a very important topic and a skill to master to some extent.
+
+Long gone the days when we just needed a cheap hosting service and an FTP access to be able to setup and update our static websites.
+
+Furthermore, it is worth considering that software development has become a lot more collaborative thanks to tools like Git and services like GitHub and therefore people are getting used to the benefits of versioning. This brought in the idea of being able to keep our deploys versioned as well and to be able to roll back to a previous version easily in case a new deploy ends up to break something.
+
+In this article, we will learn how to set up a VPS (or a test virtual machine) to serve a static website with Nginx and how to create a simple yet effective deployment process to keep our website updated. Of course we will take care of integrating versioning and rollbacks in the process.
+
+I am assuming you already have a basic knowledge of Bash, Git, SSH, and Ubuntu but I will try to make things as clear as possible so that, even if you are a newbie, you should be able to understand and follow the tutorial.
+
+Also, you will need to have Git and NodeJs installed on your local machine.
+
+Setup of the machine
+
+The first thing to do is to have a server machine that we will need to be configured to serve our website. My advice is to get a basic VPS on DigitalOcean or Linode. It will cost you very little money ($5-10/month) and you can shut down the machine once you are done with the tutorial and save the money for when you need to serve your next real website.
+
+As an alternative, you can also use a local virtual machine to simulate a remote server. In this case, my advice is to go with Vagrant.
+
+In case you chose the first option, here are some tutorials that will explain you how to run a new machine and how to establish a connection through SSH:
+
+Digital Ocean getting started guide
+Linode getting started guide
+In case you want to go with the local virtual machine option here’s another guide for you to get started with Vagrant.
+
+Whatever path you choose I expect you have the following requirements before moving on to the rest of the tutorial:
+
+You have a remote machine up and running with Ubuntu installed
+You know the IP address (or the domain name) of the machine
+You have an SSH key pair for your local machine
+You have authorized your key pair to connect to your remote machine with SSH
+So, just to make things clear, we will work on two different machines. The local machine (our computer) for development and the remote machine (our server) as production environment to serve our website to the World. All the next paragraphs will be labeled with “(local)” or “(remote)” to make clear where we will perform our actions.
+
+Install Nginx (remote)
+
+I am assuming your server is running Ubuntu (at the time of writing the last LTS version is 14.04). The first thing we need to do is to login with SSH to our server and install Nginx. In case you never heard of it, Nginx is one of the most famous web servers. It is really easy to install and configure and it also offers very good performances. You can use Apache as an alternative but we will stick with Nginx in this tutorial. To install Nginx on Ubuntu you just need to be sure you are connected to your remote server and to run the following command in your bash prompt:
+
+sudo apt-get install -y nginx
+If everything went fine we now have Nginx installed. If you open your browser and visit http://yourserver/ (where yourserver is the real IP or the domain name of your server) you should be able to see the default Nginx welcome page. We will change that later with our real website.
+
+We will also need to have git installed on our server, so let’s add it:
+
+sudo apt-get install -y git
+For now, our server is ok, we will see in a moment how to configure it for our needs, but let’s create a new website on our development machine first!
+
+Create a sample website (local)
+
+In this paragraph, we will create a very simple website and start to version it using git.
+
+Let’s just create a new folder in our local machine, open a command line shell in that folder and run:
+
+git init
+For the sake of simplicity, on our website, we are going to have two files and a HTML home page and a CSS file.
+
+Our HTML file is called index.html and it should look like this:
+
+<html>
+ <head>
+ <meta charset="utf-8">
+ <title>My wonderful website</title>
+ <link rel="stylesheet" href="style.css">
+ </head>
+ <body>
+ <h1>Welcome to my wonderful website</h1>
+ <p>You will never find another place as cool as this</p>
+ </body>
+</html>
+Pretty simple! Now let’s move to our style.css:
+
+ 
+
+css
+ html {
+ font-family: sans-serif;
+ -ms-text-size-adjust: 100%;
+ -webkit-text-size-adjust: 100%;
+ }
+
+body {
+ margin: 0;
+ }
+article,
+ aside,
+ details,
+ figcaption,
+ figure,
+ footer,
+ header,
+ hgroup,
+ main,
+ menu,
+ nav,
+ section,
+ summary {
+ display: block;
+ }
+audio,
+ canvas,
+ progress,
+ video {
+ display: inline-block;
+ vertical-align: baseline;
+ }
+audio:not([controls]) {
+ display: none;
+ height: 0;
+ }
+[hidden],
+ template {
+ display: none;
+ }
+a {
+ background-color: transparent;
+ }
+a:active,
+ a:hover {
+ outline: 0;
+ }
+abbr[title] {
+ border-bottom: 1px dotted;
+ }
+b,
+ strong {
+ font-weight: bold;
+ }
+dfn {
+ font-style: italic;
+ }
+h1 {
+ font-size: 2em;
+ margin: 0.67em 0;
+ }
+mark {
+ background: #ff0;
+ color: #000;
+ }
+small {
+ font-size: 80%;
+ }
+sub,
+ sup {
+ font-size: 75%;
+ line-height: 0;
+ position: relative;
+ vertical-align: baseline;
+ }
+sup {
+ top: -0.5em;
+ }
+sub {
+ bottom: -0.25em;
+ }
+img {
+ border: 0;
+ }
+svg:not(:root) {
+ overflow: hidden;
+ }
+figure {
+ margin: 1em 40px;
+ }
+hr {
+ box-sizing: content-box;
+ height: 0;
+ }
+pre {
+ overflow: auto;
+ }
+code,
+ kbd,
+ pre,
+ samp {
+ font-family: monospace, monospace;
+ font-size: 1em;
+ }
+button,
+ input,
+ optgroup,
+ select,
+ textarea {
+ color: inherit;
+ font: inherit;
+ margin: 0;
+ }
+button {
+ overflow: visible;
+ }
+button,
+ select {
+ text-transform: none;
+ }
+button,
+ html input[type="button"],
+ input[type="reset"],
+ input[type="submit"] {
+ -webkit-appearance: button;
+ cursor: pointer;
+ }
+button[disabled],
+ html input[disabled] {
+ cursor: default;
+ }
+button::-moz-focus-inner,
+ input::-moz-focus-inner {
+ border: 0;
+ padding: 0;
+ }
+input {
+ line-height: normal;
+ }
+input[type="checkbox"],
+ input[type="radio"] {
+ box-sizing: border-box;
+ padding: 0;
+ }
+input[type="number"]::-webkit-inner-spin-button,
+ input[type="number"]::-webkit-outer-spin-button {
+ height: auto;
+ }
+input[type="search"] {
+ -webkit-appearance: textfield;
+ box-sizing: content-box;
+ }
+input[type="search"]::-webkit-search-cancel-button,
+ input[type="search"]::-webkit-search-decoration {
+ -webkit-appearance: none;
+ }
+fieldset {
+ border: 1px solid #c0c0c0;
+ margin: 0 2px;
+ padding: 0.35em 0.625em 0.75em;
+ }
+legend {
+ border: 0;
+ padding: 0;
+ }
+textarea {
+ overflow: auto;
+ }
+optgroup {
+ font-weight: bold;
+ }
+table {
+ border-collapse: collapse;
+ border-spacing: 0;
+ }
+data-language="css">td,
+ th {
+ padding: 0;
+ }
+/** ------ END NORMALIZE.CSS ------ **/
+body h1,
+ body p {
+ text-align: center;
+ }
